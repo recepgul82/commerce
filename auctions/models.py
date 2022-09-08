@@ -32,10 +32,10 @@ class AuctionListing(models.Model):
 class Bid(models.Model):
     bidder = models.ForeignKey(User, on_delete=models.CASCADE, related_name="bidders")
     bidding_price = models.IntegerField()
-    bid_item = models.ForeignKey(AuctionListing, on_delete=models.CASCADE, related_name="bidded_items")
+    bid_item = models.ForeignKey(AuctionListing, on_delete=models.CASCADE, related_name="bids_on_item")
 
     def __str__(self):
-        return f"{self.bidder} bid {self.bidding_price}$ on {self._bid_item.listing_name}"
+        return f"{self.bidder} bid {self.bidding_price}$ on {self.bid_item.listing_name}"
 
 
 class Comment(models.Model):

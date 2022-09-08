@@ -26,7 +26,21 @@
 </div>
 
 <div class="container">
-    <p>INSERT BIDDING FORM HERE</p>
+    {% if user.id != listing.creator.id %}
+        {% if message %}
+            <p>{{ message }}</p>
+        {% endif %}
+        <form method="POST">
+            {% csrf_token %}
+            {{ bidding_form.as_p }}
+            <input type="submit" class="btn btn-primary" value="Submit Bidding">
+        </form>
+
+    {% else %}
+        <p>CLOSE AUCTION</p>
+    {% endif %}
+        
+    
 </div>
 
 <div class="container">

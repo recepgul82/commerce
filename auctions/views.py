@@ -5,7 +5,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
-from .forms import ListingForm
+from .forms import ListingForm, BiddingForm
 
 from .models import User, AuctionListing, Category
 
@@ -107,28 +107,55 @@ def listing(request, listing_id, user_id):
     except AuctionListing.DoesNotExist:
         watchlist= None
     
-    if request.method == "POST":
+    if request.method == "POST" and request.POST.get("watchlist_status"):
+        print((request.POST.get("watchlist_status")))
+
         watchlist_status = request.POST["watchlist_status"]
-        print(watchlist_status)
+        # Return False if the item is already on watchlist
         if watchlist_status == "True":   
             user.watchlist_items.add(listing)
-            
+            # adds the item to the users watchlist 
             return HttpResponseRedirect(reverse("listing", kwargs={
             'listing_id': listing_id,
             'user_id': user_id
             }))
         else:
             user.watchlist_items.remove(watchlist)
-            
+            #removes the item from the users watchlist
             return HttpResponseRedirect(reverse("listing", kwargs={
             'listing_id': listing_id,
             'user_id': user_id
             }))
-       
-    return render(request, "auctions/listing.html", { 
-        "watchlist": watchlist,
-        "listing": listing,
-    })
+
+    elif request.method == "POST" and request.POST.get("bidding_price"):
+        print("bidding info success")
+        bidding_form = BiddingForm(request.POST)
+        if bidding_form.is_valid():
+            bidding_price = bidding_form.cleaned_data["bidding_price"]
+            if bidding_price <= listing.price:
+                message = "Bidding should be greater than the price"
+                
+            else:  
+                listing.price = bidding_price
+                listing.save()
+                message = "Bidding successful!"
+
+        bidding_form = BiddingForm() 
+        return render(request, "auctions/listing.html", { 
+            "watchlist": watchlist,
+            "listing": listing,
+            "bidding_form": bidding_form,
+            "message": message
+        })
+    
+        
+    else: 
+        bidding_form = BiddingForm() 
+        return render(request, "auctions/listing.html", { 
+            "watchlist": watchlist,
+            "listing": listing,
+            "bidding_form": bidding_form,
+        })
 
 
     
