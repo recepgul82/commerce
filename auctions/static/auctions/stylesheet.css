@@ -1,0 +1,15 @@
+body {
+    padding: 10px;
+}
+
+div {
+    padding: 5px;    
+}
+
+img.link:hover {
+    opacity: 0.5;
+}
+
+form {
+    margin: 10px;
+}

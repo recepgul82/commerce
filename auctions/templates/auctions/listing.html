@@ -1,0 +1,40 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+<div class="container">
+    <h1>Listing: {{ listing.listing_name }}</h1>
+    
+    {% if user.id != listing.creator.id %}
+        {% if watchlist %}
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="watchlist_status" value="False">
+                <input type="submit" class="btn btn-secondary" value="Remove From Watchlist">
+            </form>
+        {% else %}
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="watchlist_status" value="True">
+                <input type="submit" class="btn btn-secondary" value="Watchlist">
+            </form>
+        {% endif %}
+    {% endif %}
+
+    <img width="80%" src="{{ listing.picture }}" alt="{{ listing.listing_name }}">  
+    <p>{{ listing.definition }}</p>
+    <h3>${{ listing.price }}</h3>
+</div>
+
+<div class="container">
+    <p>INSERT BIDDING FORM HERE</p>
+</div>
+
+<div class="container">
+    <h5>Details</h5>
+    <ul>
+        <li>Listed by: {{ listing.creator }}</li>
+        <li>Category: {{ listing.category }}</li>
+    </ul>
+</div>
+
+{% endblock %}
