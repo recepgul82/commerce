@@ -6,13 +6,14 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from .forms import ListingForm, BiddingForm
+from django.db.models import Max
 
-from .models import User, AuctionListing, Category
+from .models import User, AuctionListing, Category, Bid
 
 
 def index(request):
     return render(request, "auctions/index.html", {
-        "active_listing": AuctionListing.objects.all()
+        "active_listing": AuctionListing.objects.filter(status__exact = True)
     })
 
 
@@ -98,64 +99,120 @@ def create_listing(request):
     })
 
 
+
 def listing(request, listing_id, user_id):
     listing = AuctionListing.objects.get(id=listing_id)
-    user = User.objects.get(pk=user_id)
-
-    try:
-        watchlist = user.watchlist_items.get(pk=listing_id)
-    except AuctionListing.DoesNotExist:
-        watchlist= None
+    request = request
+    number_of_bids = len(listing.bids_on_item.all())
     
-    if request.method == "POST" and request.POST.get("watchlist_status"):
-        print((request.POST.get("watchlist_status")))
+    if listing.status != True:
+        message = "Auction Closed!"
+    else:
+        message = f"There are currently {number_of_bids} bids on the item!"
 
-        watchlist_status = request.POST["watchlist_status"]
-        # Return False if the item is already on watchlist
-        if watchlist_status == "True":   
-            user.watchlist_items.add(listing)
-            # adds the item to the users watchlist 
-            return HttpResponseRedirect(reverse("listing", kwargs={
-            'listing_id': listing_id,
-            'user_id': user_id
-            }))
-        else:
-            user.watchlist_items.remove(watchlist)
-            #removes the item from the users watchlist
-            return HttpResponseRedirect(reverse("listing", kwargs={
-            'listing_id': listing_id,
-            'user_id': user_id
-            }))
-
-    elif request.method == "POST" and request.POST.get("bidding_price"):
-        print("bidding info success")
-        bidding_form = BiddingForm(request.POST)
-        if bidding_form.is_valid():
-            bidding_price = bidding_form.cleaned_data["bidding_price"]
-            if bidding_price <= listing.price:
-                message = "Bidding should be greater than the price"
-                
-            else:  
-                listing.price = bidding_price
-                listing.save()
-                message = "Bidding successful!"
-
-        bidding_form = BiddingForm() 
-        return render(request, "auctions/listing.html", { 
-            "watchlist": watchlist,
+    if user_id == "None":
+        return render(request, "auctions/listing.html", {
             "listing": listing,
-            "bidding_form": bidding_form,
-            "message": message
-        })
-    
-        
+        })  
+          
     else: 
-        bidding_form = BiddingForm() 
-        return render(request, "auctions/listing.html", { 
-            "watchlist": watchlist,
-            "listing": listing,
-            "bidding_form": bidding_form,
-        })
+        user = User.objects.get(pk=user_id)
+        
+        try:
+            watchlist = user.watchlist_items.get(pk=listing_id)
+        except AuctionListing.DoesNotExist:
+            watchlist= None
+        
+        if request.method == "POST" and request.POST.get("watchlist_status"):
+            # Checks the item and adds or removes an item from the watchlist
+            return watchlist_status(request, user, user_id, listing_id, watchlist, listing)
+
+        elif request.method == "POST" and request.POST.get("bidding_price"):
+            return bidding(request, user_id, listing_id, watchlist, listing, user, number_of_bids)
+        
+        elif request.method == "POST" and request.POST.get("closed"):
+            return close_auction(request, listing_id, user_id, listing, watchlist, number_of_bids)
+        
+        else: 
+            bidding_form = BiddingForm() 
+            return render(request, "auctions/listing.html", { 
+                "watchlist": watchlist,
+                "listing": listing,
+                "bidding_form": bidding_form,
+                "message": message,
+            })
+
+@login_required()
+def close_auction(request, listing_id, user_id, listing, watchlist, number_of_bids):
+    print((request.POST.get("closed")))
+    closed = request.POST.get("closed")
+
+    if closed == "True":
+        listing.status = False
+        listing.save()
+        message = "Auction Closed"
+
+        # find the max bid
+        # find the owner of that bid
+        # put a notification for the winning user
 
 
-    
+    return render(request, "auctions/listing.html", { 
+        "watchlist": watchlist,
+        "listing": listing,
+        "message": f"There are currently {number_of_bids} number of bids on the item!",
+    })
+
+       
+
+@login_required()
+def watchlist_status(request, user, user_id, listing_id, watchlist, listing):
+    print((request.POST.get("watchlist_status")))
+
+    watchlist_status = request.POST["watchlist_status"]
+    # Return False if the item is already on watchlist
+    if watchlist_status == "True":   
+        user.watchlist_items.add(listing)
+        # adds the item to the users watchlist 
+        return HttpResponseRedirect(reverse("listing", kwargs={
+        'listing_id': listing_id,
+        'user_id': user_id
+        }))
+    else:
+        user.watchlist_items.remove(watchlist)
+        #removes the item from the users watchlist
+        return HttpResponseRedirect(reverse("listing", kwargs={
+        'listing_id': listing_id,
+        'user_id': user_id
+        }))
+
+
+@login_required()   
+def bidding(request, user_id, listing_id, watchlist, listing, user, number_of_bids):
+    print("bidding info success")
+    bidding_form = BiddingForm(request.POST)
+    if bidding_form.is_valid():
+        
+        bid = Bid(bidder=user, bidding_price = bidding_form.cleaned_data["bidding_price"], bid_item = listing)
+        if bid.bidding_price <= listing.price:
+            message = "Bidding should be greater than the current price"
+            
+        else:  
+            bid.save()    
+            message = f"Bidding successful! There are currently {number_of_bids} number of bids on the item!"
+            return HttpResponseRedirect(reverse("listing", kwargs={
+            'listing_id': listing_id,
+            'user_id': user_id,
+            }))
+
+    bidding_form = BiddingForm() 
+    return render(request, "auctions/listing.html", { 
+        "watchlist": watchlist,
+        "listing": listing,
+        "bidding_form": bidding_form,
+        "message": message
+    })
+
+
+
+

@@ -1,5 +1,6 @@
 from datetime import datetime
 from tkinter import CASCADE
+from xmlrpc.client import Boolean
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -24,6 +25,7 @@ class AuctionListing(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE)
     date = models.DateTimeField(default=datetime.now)
     watchlist = models.ManyToManyField(User, blank=True, related_name="watchlist_items")
+    status = models.BooleanField(default=True)
     
     def __str__(self):
         return f"{self.listing_name}"

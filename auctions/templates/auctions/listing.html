@@ -4,7 +4,7 @@
 <div class="container">
     <h1>Listing: {{ listing.listing_name }}</h1>
     
-    {% if user.id != listing.creator.id %}
+    {% if user.id != None and user.id != listing.creator.id %}
         {% if watchlist %}
             <form method="POST">
                 {% csrf_token %}
@@ -25,6 +25,7 @@
     <h3>${{ listing.price }}</h3>
 </div>
 
+{% if user.id != None %}
 <div class="container">
     {% if user.id != listing.creator.id %}
         {% if message %}
@@ -37,11 +38,23 @@
         </form>
 
     {% else %}
-        <p>CLOSE AUCTION</p>
-    {% endif %}
-        
     
+        {% if listing.status == True %}
+            <p>{{ message }}</p>
+            <form method="POST">
+                {% csrf_token %}
+                <label for="close_auction">Close Auction</label>
+                <input type="checkbox" id="close_auction" name="closed" value="True">
+                <input type="Submit" class="btn btn-primary btn-sm" value="Submit"> 
+            </form>       
+        {% else %}
+            <p>{{ message }}</p>
+        {% endif %}
+        
+    {% endif %}         
 </div>
+{% endif %}
+
 
 <div class="container">
     <h5>Details</h5>
