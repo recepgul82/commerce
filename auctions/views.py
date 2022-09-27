@@ -8,12 +8,13 @@ from django.contrib.auth.decorators import login_required
 from .forms import ListingForm, BiddingForm
 from django.db.models import Max
 
-from .models import User, AuctionListing, Category, Bid
+from .models import User, AuctionListing, Category, Bid, Comment
 
 
 def index(request):
     return render(request, "auctions/index.html", {
-        "active_listing": AuctionListing.objects.filter(status__exact = True)
+        #"active_listing": AuctionListing.objects.filter(status__exact = True)
+        "active_listing": AuctionListing.objects.all()
     })
 
 
@@ -106,7 +107,10 @@ def listing(request, listing_id, user_id):
     number_of_bids = len(listing.bids_on_item.all())
     
     if listing.status != True:
-        message = "Auction Closed!"
+        if listing.winner != user_id:
+            message = "Auction Closed!"
+        else:
+            message = "Congratulations! You won the auction"
     else:
         message = f"There are currently {number_of_bids} bids on the item!"
 
@@ -131,40 +135,67 @@ def listing(request, listing_id, user_id):
             return bidding(request, user_id, listing_id, watchlist, listing, user, number_of_bids)
         
         elif request.method == "POST" and request.POST.get("closed"):
-            return close_auction(request, listing_id, user_id, listing, watchlist, number_of_bids)
+            return close_auction(request, listing_id, user_id, listing, watchlist, message)
         
+        elif request.method == "POST" and request.POST.get("comment"):
+            return post_comment(request, user_id, listing_id)
+
         else: 
+            comments = AuctionListing.objects.get(pk=listing_id).comments.all() 
+            print(listing_id)
+            print(comments)
             bidding_form = BiddingForm() 
             return render(request, "auctions/listing.html", { 
                 "watchlist": watchlist,
                 "listing": listing,
                 "bidding_form": bidding_form,
                 "message": message,
+                "comments": comments,
             })
 
+
 @login_required()
-def close_auction(request, listing_id, user_id, listing, watchlist, number_of_bids):
+def post_comment(request, user_id, listing_id):
+    text = request.POST.get("comment")
+    print(text)
+    
+    comment = Comment(comment_item=AuctionListing.objects.get(pk=listing_id), commentor=User.objects.get(pk=user_id), comment_text=text)
+    comment.save()
+
+    return HttpResponseRedirect(reverse("listing", kwargs={
+            'listing_id': listing_id,
+            'user_id': user_id,
+            }))
+
+
+@login_required()
+def close_auction(request, listing_id, user_id, listing, watchlist, message):
     print((request.POST.get("closed")))
     closed = request.POST.get("closed")
 
     if closed == "True":
         listing.status = False
-        listing.save()
         message = "Auction Closed"
 
-        # find the max bid
-        # find the owner of that bid
-        # put a notification for the winning user
-
+        # find the max amount on a bid
+        bid = AuctionListing.objects.get(id=listing_id)
+        bids = bid.bids_on_item.all()
+        max = bids.all().aggregate(Max("bidding_price"))
+        listing.max_price = max["bidding_price__max"]
+        # find the max bid object
+        max_bid = bids.get(bidding_price = listing.max_price)
+        # update winner on the listing
+        listing.winner = max_bid.bidder
+        listing.save()
 
     return render(request, "auctions/listing.html", { 
         "watchlist": watchlist,
         "listing": listing,
-        "message": f"There are currently {number_of_bids} number of bids on the item!",
+        "message": message,
+        "comments": AuctionListing.objects.get(pk=listing_id).comments.all() 
     })
 
        
-
 @login_required()
 def watchlist_status(request, user, user_id, listing_id, watchlist, listing):
     print((request.POST.get("watchlist_status")))
@@ -205,14 +236,19 @@ def bidding(request, user_id, listing_id, watchlist, listing, user, number_of_bi
             'user_id': user_id,
             }))
 
-    bidding_form = BiddingForm() 
+    bidding_form = BiddingForm()
+    
     return render(request, "auctions/listing.html", { 
         "watchlist": watchlist,
         "listing": listing,
         "bidding_form": bidding_form,
-        "message": message
+        "message": message,
     })
 
 
-
+def watchlist(request, user_id):
+    user = User.objects.get(id=user_id)
+    return render(request, "auctions/watchlist.html", {
+        "listings": user.watchlist_items.all(),
+    })
 

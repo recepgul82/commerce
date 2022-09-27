@@ -28,17 +28,51 @@
 {% if user.id != None %}
 <div class="container">
     {% if user.id != listing.creator.id %}
-        {% if message %}
+        {% if listing.winner.id == user.id %}
+            <p>Congratulations! You won the auction for {{ listing.max_price }} $</p>
+        {% elif message %}
             <p>{{ message }}</p>
         {% endif %}
-        <form method="POST">
-            {% csrf_token %}
-            {{ bidding_form.as_p }}
-            <input type="submit" class="btn btn-primary" value="Submit Bidding">
-        </form>
 
+        
+        {% if listing.status == True %}
+        <hr>
+            <form method="POST">
+                {% csrf_token %}
+                {{ bidding_form.as_p }}
+                <input type="submit" class="btn btn-primary" value="Submit Bidding">
+            </form>
+        {% endif %}
+        
+        {% if comments %}
+            <br>
+            <h2><strong>Comments</strong></h2>
+            {% for comment in comments %}  
+                <hr>
+                <fieldset id="comments"> 
+                    <legend>{{ comment.commentor }}:</legend>
+                    <p>{{ comment.comment_text }}</p>     
+                </fieldset> 
+            {% endfor %}
+             
+        {% else %}
+            <hr>
+            <fieldset>
+                <h2><strong>Comments</strong></h2>
+                <p>Be the first one to comment!</p>
+            </fieldset>         
+        {% endif %} 
+        
+        {% if listing.status == True %}
+            <form method="POST" id="comment_form">
+                {% csrf_token %}
+                <label for="comment">Comment: </label><br>
+                <textarea id="comment" name="comment" cols="40", rows="5" form="comment_form"></textarea><br>
+                <input type="submit" class="btn btn-primary" value="Submit Comment">
+            </form>
+        {% endif %}
+      
     {% else %}
-    
         {% if listing.status == True %}
             <p>{{ message }}</p>
             <form method="POST">
@@ -49,14 +83,34 @@
             </form>       
         {% else %}
             <p>{{ message }}</p>
-        {% endif %}
-        
-    {% endif %}         
+            <p>{{ listing.winner }} won the auction for {{ listing.max_price }} $</p>
+        {% endif %}  
+
+        {% if comments %}
+            <br>
+            <h2><strong>Comments</strong></h2>
+            <br>
+            {% for comment in comments %}       
+                <fieldset id="comments"> 
+                    <legend>{{ comment.commentor }}:</legend>
+                    <p>{{ comment.comment_text }}</p>     
+                </fieldset> 
+            {% endfor %}
+             
+        {% else %}
+            <hr>
+            <fieldset>
+                <h2><strong>Comments</strong></h2>
+                <p>There are currently no comments!</p>
+            </fieldset>         
+        {% endif %}   
+    {% endif %}     
 </div>
 {% endif %}
 
 
 <div class="container">
+    <hr>
     <h5>Details</h5>
     <ul>
         <li>Listed by: {{ listing.creator }}</li>

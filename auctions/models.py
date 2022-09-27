@@ -26,6 +26,8 @@ class AuctionListing(models.Model):
     date = models.DateTimeField(default=datetime.now)
     watchlist = models.ManyToManyField(User, blank=True, related_name="watchlist_items")
     status = models.BooleanField(default=True)
+    winner = models.ForeignKey(User, on_delete=models.CASCADE, blank= True, null = True, related_name="bid_winners")
+    max_price = models.IntegerField(null=True, blank=True)
     
     def __str__(self):
         return f"{self.listing_name}"
